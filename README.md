@@ -1,31 +1,29 @@
-# Consulado Formulario D4
+# Formulario D4 - Consulado de Guatemala
 
-Herramienta web para completar de forma ordenada el formulario D4 utilizado en trámites consulares.
-
-Este proyecto permite generar formularios con información estructurada para facilitar la atención de connacionales y mejorar la organización durante los procesos administrativos.
+Aplicación web para llenar digitalmente el formulario D4 y generar el PDF listo para impresión.
 
 ## Funcionalidades
 
-- Selección automática de **Departamentos y Municipios de Guatemala**
-- Conversión automática de texto a **MAYÚSCULAS** para cumplir con formato consular
-- Formato automático de **CUI / DPI**
-- Formato automático de **teléfonos**
-- Generación de formulario listo para imprimir o exportar a PDF
+- Autocompletado de departamentos de Guatemala
+- Municipios dependientes por departamento
+- Formato automático de CUI DPI
+- Formato automático de teléfonos
+- Campos en MAYÚSCULA (estándar consular)
+- Cálculo automático de edad
+- Generación automática del PDF con pdf-lib
 
-## Estructura del proyecto
+## Tecnologías
 
-## Objetivo
+- HTML
+- JavaScript
+- pdf-lib
 
-Este proyecto fue desarrollado como una herramienta de apoyo para mejorar el flujo de trabajo en procesos consulares.
+## Uso
 
-Puede ser utilizado libremente por consulados o instituciones que atiendan a ciudadanos guatemaltecos.
+Abrir `index.html` en el navegador y completar el formulario.
 
-## Licencia
+Luego presionar **Generar PDF**.
 
-MIT License
+## Estado
 
-## Autor
-
-Carlos Narvaez  
-Digital Marketing & Web Strategy  
-https://narvaezcarlos.com
+Versión estable inicial.
