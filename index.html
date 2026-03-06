@@ -21,15 +21,15 @@
     .section{border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin:14px 0; background:var(--card)}
     .section h2{font-size:14px; margin:0 0 10px}
     label{font-size:12px; color:#222; display:block; margin-bottom:6px}
-    input{width:100%; padding:10px; border:1px solid #ccc; border-radius:10px; font-size:14px; background:#fff}
-    input:focus{outline:2px solid rgba(11,102,255,.15); border-color:#9dbfff}
+    input, select{width:100%; padding:10px; border:1px solid #ccc; border-radius:10px; font-size:14px; background:#fff}
+    input:focus, select:focus{outline:2px solid rgba(11,102,255,.15); border-color:#9dbfff}
     .grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:12px}
     .grid2{display:grid; grid-template-columns:repeat(2, 1fr); gap:12px}
     .grid4{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px}
     .row{margin:10px 0}
     .tight{max-width:220px}
     .tight2{max-width:320px}
-    .pillRow{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .pillRow{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end}
     .pill{
       border:1px solid #dcdcdc;
       background:#fff;
@@ -88,7 +88,7 @@
           <span>$65</span>
         </label>
 
-        <!-- Grupo independiente (pueden marcarse ambas) -->
+        <!-- Check independientes -->
         <label class="pill" title="DPI">
           <input type="checkbox" id="pago15">
           <span>$15 (DPI)</span>
@@ -182,6 +182,22 @@
 
     <div class="divider"></div>
 
+    <!-- Lugar de nacimiento -->
+    <div class="grid2">
+      <div class="row">
+        <label>Departamento (Lugar de nacimiento)</label>
+        <input id="deptNac" list="listaDepartamentos" placeholder="Ej: Guatemala">
+        <datalist id="listaDepartamentos"></datalist>
+      </div>
+      <div class="row">
+        <label>Municipio (Lugar de nacimiento)</label>
+        <input id="munNac" list="listaMunicipios" placeholder="Ej: Guatemala">
+        <datalist id="listaMunicipios"></datalist>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
     <!-- Fecha de nacimiento + Edad -->
     <div class="grid4">
       <div class="row tight">
@@ -237,52 +253,20 @@
       </div>
     </div>
 
-<div class="row">
-  <label>Etnia</label>
+    <div class="row">
+      <label>Etnia</label>
+      <div class="pillRow">
+        <label class="pill"><input type="radio" name="etnia" id="etniaMaya" value="maya"><span>Maya</span></label>
+        <label class="pill"><input type="radio" name="etnia" id="etniaLadino" value="ladino"><span>Ladino/Mestizo</span></label>
 
-  <div class="pillRow">
-    <label class="pill">
-      <input type="radio" name="etnia" id="etniaMaya" value="maya">
-      <span>Maya</span>
-    </label>
-
-    <label class="pill">
-      <input type="radio" name="etnia" id="etniaLadino" value="ladino">
-      <span>Ladino/Mestizo</span>
-    </label>
-
-    <div class="row tight2" style="margin:0">
-      
-      <input id="idioma" list="idiomasMayas" placeholder="Idioma Ej: K'iche'">
-
-      <datalist id="idiomasMayas">
-        <option value="Achi">
-        <option value="Akateko">
-        <option value="Awakateko">
-        <option value="Ch’orti’">
-        <option value="Chuj">
-        <option value="Itza">
-        <option value="Ixil">
-        <option value="Jakalteco">
-        <option value="Kaqchikel">
-        <option value="K’iche’">
-        <option value="Mam">
-        <option value="Mopan">
-        <option value="Poqomam">
-        <option value="Poqomchi’">
-        <option value="Q’anjob’al">
-        <option value="Q’eqchi’">
-        <option value="Sakapulteko">
-        <option value="Sipakapense">
-        <option value="Tektiteko">
-        <option value="Tz’utujil">
-        <option value="Uspanteko">
-      </datalist>
-
+        <div class="row tight2" style="margin:0">
+          <label style="margin-bottom:6px">Idioma</label>
+          <input id="idioma" list="listaIdiomas" placeholder="Ej: Español / K’iche’">
+          <datalist id="listaIdiomas"></datalist>
+        </div>
+      </div>
     </div>
-
   </div>
-</div>
 
   <!-- PADRES -->
   <div class="section">
@@ -314,7 +298,7 @@
     </div>
   </div>
 
-  <!-- DIRECCIÓN (ENVÍO) -->
+  <!-- DIRECCIÓN (Envío / residencia según tu uso actual) -->
   <div class="section">
     <h2>Dirección</h2>
 
@@ -387,6 +371,10 @@
 
   <!-- pdf-lib -->
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+
+  <!-- Tu dataset de municipios -->
+<script src="./municipios.js?v=1"></script>
+  <!-- app (cache-buster para Hostinger) -->
   <script src="./app.js?v=20260304-1"></script>
 </body>
 </html>

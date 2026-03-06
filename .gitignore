@@ -1,5 +1,5 @@
 # No subir PDFs (plantilla del formulario)
-*.pdf
+#*.pdf
 
 # basura típica
 .DS_Store

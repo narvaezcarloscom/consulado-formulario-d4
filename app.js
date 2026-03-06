@@ -1,297 +1,593 @@
-const PDF_PATH = encodeURI("./formularioD4.pdf");
+// app.js
+// Requiere en index.html (en este orden):
+// 1) pdf-lib
+// 2) municipios.js
+// 3) app.js
 
+const PDF_PATH = encodeURI("./formularioD4.pdf");
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", () => {
-  // --- helpers seguros para evitar null errors
-  const on = (id, evt, fn) => {
-    const el = $(id);
-    if (!el) return;
-    el.addEventListener(evt, fn);
-  };
+  // ====== Defaults / UX ======
+  initAutoFechaHoy();
+  wireInputMasks();
+  seedDepartamentosYMunicipios(); // usa municipios.js (dept nac / mun nac)
+  seedIdiomasMayas();             // datalist idiomas
 
-  // 1) Fecha auto dd/mm/aa (hoy)
-  const setFechaHoy = () => {
-    const el = $("fecha");
-    if (!el) return;
+  // ====== Botones ======
+  const btnListar = $("btnListar");
+  const btnNuevo = $("btnNuevo");
+  const btnGenerar = $("btnGenerar");
+
+  if (btnListar) btnListar.addEventListener("click", listarCamposPDF);
+  if (btnNuevo) btnNuevo.addEventListener("click", limpiarFormulario);
+  if (btnGenerar) btnGenerar.addEventListener("click", generarPDF);
+});
+
+// =========================
+// Defaults / UX
+// =========================
+
+function initAutoFechaHoy() {
+  const el = $("fecha");
+  if (!el) return;
+
+  // Si está vacío, lo llenamos con hoy en dd/mm/aa
+  if (!el.value.trim()) {
     const d = new Date();
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yy = String(d.getFullYear()).slice(-2);
     el.value = `${dd}/${mm}/${yy}`;
-  };
-  setFechaHoy();
-
-  // 2) Normalización CUI DPI (13 dígitos)
-  on("CuiDPI", "input", (e) => {
-    e.target.value = e.target.value.replace(/\D/g, "").slice(0, 13);
-  });
-
-  // 3) Normalización fecha nacimiento
-  ["nacDia","nacMes","nacAnio"].forEach((id) => {
-    on(id, "input", (e) => {
-      e.target.value = e.target.value.replace(/\D/g, "");
-    });
-  });
-
-  // 4) Cálculo de edad automático (y lo coloca en el input edad)
-  const calcularEdad = () => {
-    const dia = parseInt(($("nacDia")?.value || "").trim(), 10);
-    const mes = parseInt(($("nacMes")?.value || "").trim(), 10);
-    const anio = parseInt(($("nacAnio")?.value || "").trim(), 10);
-    if (!dia || !mes || !anio) return;
-
-    // Validación simple
-    if (anio < 1900 || anio > new Date().getFullYear()) return;
-    if (mes < 1 || mes > 12) return;
-    if (dia < 1 || dia > 31) return;
-
-    const hoy = new Date();
-    const nac = new Date(anio, mes - 1, dia);
-    let edad = hoy.getFullYear() - nac.getFullYear();
-    const m = hoy.getMonth() - nac.getMonth();
-    if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
-
-    const edadEl = $("edad");
-    if (edadEl) edadEl.value = String(Math.max(0, edad));
-  };
-
-  on("nacDia", "input", calcularEdad);
-  on("nacMes", "input", calcularEdad);
-  on("nacAnio", "input", calcularEdad);
-
-  // 5) Listar campos PDF
-  on("btnListar", "click", async () => {
-    const bytes = await fetch(PDF_PATH).then(r => r.arrayBuffer());
-    const pdfDoc = await PDFLib.PDFDocument.load(bytes);
-    const form = pdfDoc.getForm();
-
-    console.log("=== CAMPOS EN EL PDF (name / type) ===");
-    form.getFields().forEach((f) => {
-      console.log(f.getName(), "-", f.constructor.name);
-    });
-  });
-
-  // 6) Nuevo
-  on("btnNuevo", "click", () => {
-    const ids = [
-      "fecha","mision",
-      "CuiDPI","depMun",
-      "nombre1","nombre2","nombre3","apellido1","apellido2","apellidoCasada",
-      "nacDia","nacMes","nacAnio","edad","estatura","peso","ocupacion",
-      "idioma","padre","madre",
-      "celularRes","telRes",
-      "dirEnv","aptEnv","ciudadEnv","estadoEnv","zipEnv",
-      "documentoPadre","documentoMadre",
-      "obs1","obs2",
-    ];
-    ids.forEach((id) => { const el = $(id); if (el) el.value = ""; });
-
-    // reset radios/checkboxes
-    const toUncheck = [
-      "pago100","pago65","pago15","pago6",
-      "estatusNuevo","estatusRenovar","estatusReponer",
-      "docDpi","docCertificado","docPasaporte",
-      "sexoM","sexoF","civilCasado","civilSoltero","etniaMaya","etniaLadino"
-    ];
-    toUncheck.forEach((id) => { const el = $(id); if (el) el.checked = false; });
-
-    // vuelve a fecha de hoy
-    setFechaHoy();
-  });
-
-  // 7) Generar PDF
-  on("btnGenerar", "click", async () => {
-    // Lee valores del HTML
-    const data = {
-      fecha: ($("fecha")?.value || "").trim(),
-      mision: ($("mision")?.value || "").trim(),
-
-      // IMPORTANTES (estos eran el bug)
-      cuiDpi: ($("CuiDPI")?.value || "").trim(),
-      depMun: ($("depMun")?.value || "").trim(),
-
-      nombre1: ($("nombre1")?.value || "").trim(),
-      nombre2: ($("nombre2")?.value || "").trim(),
-      nombre3: ($("nombre3")?.value || "").trim(),
-      apellido1: ($("apellido1")?.value || "").trim(),
-      apellido2: ($("apellido2")?.value || "").trim(),
-      apellidoCasada: ($("apellidoCasada")?.value || "").trim(),
-
-      nacDia: ($("nacDia")?.value || "").trim(),
-      nacMes: ($("nacMes")?.value || "").trim(),
-      nacAnio: ($("nacAnio")?.value || "").trim(),
-
-      edad: ($("edad")?.value || "").trim(),
-      estatura: ($("estatura")?.value || "").trim(),
-      peso: ($("peso")?.value || "").trim(),
-      ocupacion: ($("ocupacion")?.value || "").trim(),
-
-      idioma: ($("idioma")?.value || "").trim(),
-
-      padre: ($("padre")?.value || "").trim(),
-      madre: ($("madre")?.value || "").trim(),
-
-      celularRes: ($("celularRes")?.value || "").trim(),
-      telRes: ($("telRes")?.value || "").trim(),
-
-      dirEnv: ($("dirEnv")?.value || "").trim(),
-      aptEnv: ($("aptEnv")?.value || "").trim(),
-      ciudadEnv: ($("ciudadEnv")?.value || "").trim(),
-      estadoEnv: ($("estadoEnv")?.value || "").trim(),
-      zipEnv: ($("zipEnv")?.value || "").trim(),
-
-      documentoPadre: ($("documentoPadre")?.value || "").trim(),
-      documentoMadre: ($("documentoMadre")?.value || "").trim(),
-
-      obs1: ($("obs1")?.value || "").trim(),
-      obs2: ($("obs2")?.value || "").trim(),
-
-      // checks / radios (por ahora los dejo listos para que luego los conectemos si quieres)
-      pago100: !!$("pago100")?.checked,
-      pago65: !!$("pago65")?.checked,
-      pago15: !!$("pago15")?.checked,
-      pago6: !!$("pago6")?.checked,
-
-      estatusNuevo: !!$("estatusNuevo")?.checked,
-      estatusRenovar: !!$("estatusRenovar")?.checked,
-      estatusReponer: !!$("estatusReponer")?.checked,
-
-      docDpi: !!$("docDpi")?.checked,
-      docCertificado: !!$("docCertificado")?.checked,
-      docPasaporte: !!$("docPasaporte")?.checked,
-
-      sexoM: !!$("sexoM")?.checked,
-      sexoF: !!$("sexoF")?.checked,
-
-      civilCasado: !!$("civilCasado")?.checked,
-      civilSoltero: !!$("civilSoltero")?.checked,
-
-      etniaMaya: !!$("etniaMaya")?.checked,
-      etniaLadino: !!$("etniaLadino")?.checked,
-    };
-
-    // Abre PDF plantilla
-    const bytes = await fetch(PDF_PATH).then(r => r.arrayBuffer());
-    const pdfDoc = await PDFLib.PDFDocument.load(bytes);
-    const form = pdfDoc.getForm();
-
-    // -------------------------
-    // SET TEXT FIELDS (PDF)
-    // -------------------------
-
-    // Datos del solicitante (si ya los tienes así en PDF, se llenan)
-    safeSetText(form, "Primer nombre", data.nombre1);
-    safeSetText(form, "Segundo nombre", data.nombre2);
-    safeSetText(form, "Tercer nombre", data.nombre3);
-    safeSetText(form, "Primer apellido", data.apellido1);
-    safeSetText(form, "Segundo apellido", data.apellido2);
-    safeSetText(form, "Apellido de casada", data.apellidoCasada);
-
-    // Fecha nacimiento (confirmaste: Text95/96/97)
-    safeSetText(form, "Text95", data.nacDia);
-    safeSetText(form, "Text96", data.nacMes);
-    safeSetText(form, "Text97", data.nacAnio);
-
-    // Edad / Estatura / Peso / Ocupación (según tu PDF)
-    safeSetText(form, "años", data.edad);
-    safeSetText(form, "centímetros", data.estatura);
-    safeSetText(form, "libras", data.peso);
-    safeSetText(form, "ocupación", data.ocupacion);
-
-    // Idioma (campo editable del PDF: “idioma” en minúscula según tu captura)
-    safeSetText(form, "idioma", data.idioma);
-    // si en tu PDF en realidad está como “Idioma” (por si acaso), lo intento también:
-    safeSetText(form, "Idioma", data.idioma);
-
-    // Padres
-    safeSetText(form, "Padre", data.padre);
-    safeSetText(form, "Madre", data.madre);
-
-    // Teléfonos (si tus campos en PDF son esos mismos nombres)
-    safeSetText(form, "Teléfono celular", data.celularRes);
-    safeSetText(form, "Teléfono", data.telRes);
-
-    // Dirección envío (según tu PDF con _2 en otros casos, aquí tú estás usando envío como principal en el HTML actual)
-    safeSetText(form, "Dirección_2", data.dirEnv);
-    safeSetText(form, "APT_2", data.aptEnv);
-    safeSetText(form, "Ciudad_2", data.ciudadEnv);
-    safeSetText(form, "Estado u otro_2", data.estadoEnv);
-    safeSetText(form, "Código postal_2", data.zipEnv);
-
-    // Autorización menor
-    safeSetText(form, "DocumentoPadre", data.documentoPadre);
-    safeSetText(form, "DocumentoMadre", data.documentoMadre);
-
-    // Observaciones
-    safeSetText(form, "Observacion1", data.obs1);
-    safeSetText(form, "Observacion2", data.obs2);
-
-    // -------------------------
-    // FIX PRINCIPAL (los que NO se estaban cargando)
-    // -------------------------
-    // CUI DPI -> campo PDF confirmado: CuiDPI
-    safeSetText(form, "CuiDPI", data.cuiDpi);
-
-    // Lugar de emisión -> campo PDF confirmado: Departamento -Municipio (con espacio)
-    safeSetText(form, "Departamento -Municipio", data.depMun);
-
-    // -------------------------
-    // CHECKBOXES (los dejamos listos para conectar cuando me confirmes los nombres exactos)
-    // -------------------------
-    // Si ya tienes estos nombres en tu PDF, se van a marcar. Si no existen, no rompe.
-    safeSetCheck(form, "Check$100", data.pago100);
-    safeSetCheck(form, "Check$65", data.pago65);
-    safeSetCheck(form, "Check$15", data.pago15);
-    safeSetCheck(form, "Check$6", data.pago6);
-
-    safeSetCheck(form, "CheckNuevo", data.estatusNuevo);
-    safeSetCheck(form, "CheckRenovar", data.estatusRenovar);
-    safeSetCheck(form, "CheckReponer", data.estatusReponer);
-
-    safeSetCheck(form, "CheckDpi", data.docDpi);
-    safeSetCheck(form, "CheckCertificado", data.docCertificado);
-    safeSetCheck(form, "CheckPasaporte", data.docPasaporte);
-
-    safeSetCheck(form, "CheckM", data.sexoM);
-    safeSetCheck(form, "CheckF", data.sexoF);
-
-    safeSetCheck(form, "CheckCasado", data.civilCasado);
-    safeSetCheck(form, "CheckSoltero", data.civilSoltero);
-
-    safeSetCheck(form, "CheckMaya", data.etniaMaya);
-    safeSetCheck(form, "CheckLadino", data.etniaLadino);
-
-    // Aplana para impresión
-    form.flatten();
-
-    // Genera y abre PDF
-    const out = await pdfDoc.save();
-    const blob = new Blob([out], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank");
-  });
-});
-
-function safeSetText(form, fieldName, value) {
-  if (value === undefined || value === null) return;
-  const v = String(value).trim();
-  if (!v) return;
-  try {
-    const f = form.getTextField(fieldName);
-    f.setText(v);
-  } catch (e) {
-    // no rompe, solo avisa
-    // console.warn(`No se pudo setear "${fieldName}".`);
   }
 }
 
-function safeSetCheck(form, fieldName, checked) {
+function wireInputMasks() {
+  // ====== MAYÚSCULAS (consulado) ======
+  // Convierte a mayúsculas al escribir en campos de texto (no afecta radios/checkbox/date)
+  // Mantiene espacios, acentos, apóstrofes, etc.
+  const forceUpperIds = [
+    "mision",
+    "depMun",
+    "nombre1","nombre2","nombre3","apellido1","apellido2","apellidoCasada",
+    "deptNac","munNac",
+    "idioma",
+    "ocupacion",
+    "padre","madre",
+    "dirEnv","aptEnv","ciudadEnv","estadoEnv",
+    "documentoPadre","documentoMadre",
+    "obs1","obs2",
+  ];
+
+  forceUpperIds.forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      el.value = (el.value || "").toUpperCase();
+      // intenta conservar cursor
+      try { el.setSelectionRange(start, end); } catch {}
+    });
+  });
+
+  // ====== CUI DPI -> formato: 1234 12345 1234 (13 dígitos) ======
+  const cui = $("CuiDPI");
+  if (cui) {
+    cui.addEventListener("input", (e) => {
+      const digits = (e.target.value || "").replace(/\D/g, "").slice(0, 13);
+      const part1 = digits.slice(0, 4);
+      const part2 = digits.slice(4, 9);
+      const part3 = digits.slice(9, 13);
+      e.target.value = [part1, part2, part3].filter(Boolean).join(" ");
+    });
+  }
+
+  // ====== Teléfonos -> (206) 555 1212 ======
+  function formatPhone(value) {
+    const d = (value || "").replace(/\D/g, "").slice(0, 10);
+    const a = d.slice(0, 3);
+    const b = d.slice(3, 6);
+    const c = d.slice(6, 10);
+
+    if (!d) return "";
+    if (d.length <= 3) return `(${a}`;
+    if (d.length <= 6) return `(${a}) ${b}`;
+    return `(${a}) ${b} ${c}`;
+  }
+
+  ["celularRes", "telRes"].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", (e) => {
+      e.target.value = formatPhone(e.target.value);
+    });
+  });
+
+  // ====== Nacimiento + edad ======
+  const dia = $("nacDia");
+  const mes = $("nacMes");
+  const anio = $("nacAnio");
+  const edad = $("edad");
+
+  const clamp2 = (v) => v.replace(/\D/g, "").slice(0, 2);
+  const clamp4 = (v) => v.replace(/\D/g, "").slice(0, 4);
+
+  if (dia) dia.addEventListener("input", (e) => (e.target.value = clamp2(e.target.value)));
+  if (mes) mes.addEventListener("input", (e) => (e.target.value = clamp2(e.target.value)));
+  if (anio) anio.addEventListener("input", (e) => (e.target.value = clamp4(e.target.value)));
+
+  if (edad) edad.readOnly = true;
+
+  const recalcEdad = () => {
+    const dd = parseInt((dia?.value || "").trim(), 10);
+    const mm = parseInt((mes?.value || "").trim(), 10);
+    const yyyy = parseInt((anio?.value || "").trim(), 10);
+    const out = $("edad");
+    if (!out) return;
+
+    if (!dd || !mm || !yyyy || String(yyyy).length !== 4) {
+      out.value = "";
+      return;
+    }
+
+    if (mm < 1 || mm > 12 || dd < 1 || dd > 31 || yyyy < 1900) {
+      out.value = "";
+      return;
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - yyyy;
+
+    const hasHadBirthday =
+      (today.getMonth() + 1 > mm) ||
+      (today.getMonth() + 1 === mm && today.getDate() >= dd);
+
+    if (!hasHadBirthday) age -= 1;
+    if (age < 0 || age > 130) {
+      out.value = "";
+      return;
+    }
+
+    out.value = String(age);
+  };
+
+  if (dia) dia.addEventListener("change", recalcEdad);
+  if (mes) mes.addEventListener("change", recalcEdad);
+  if (anio) anio.addEventListener("change", recalcEdad);
+  if (dia) dia.addEventListener("input", recalcEdad);
+  if (mes) mes.addEventListener("input", recalcEdad);
+  if (anio) anio.addEventListener("input", recalcEdad);
+
+  // ====== Campos numéricos (3 dígitos) ======
+  ["estatura", "peso"].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/[^\d]/g, "").slice(0, 3);
+    });
+  });
+
+  // Zip (5)
+  const zip = $("zipEnv");
+  if (zip) {
+    zip.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
+    });
+  }
+}
+
+// =========================
+// Idiomas mayas (datalist)
+// =========================
+function seedIdiomasMayas() {
+  const dl = $("listaIdiomas");
+  if (!dl) return;
+
+  const idiomas = [
+    "Achi",
+    "Akateko",
+    "Awakateko",
+    "Ch’orti’",
+    "Chuj",
+    "Itza",
+    "Ixil",
+    "Jakalteco",
+    "Kaqchikel",
+    "K’iche’",
+    "Mam",
+    "Mopan",
+    "Poqomam",
+    "Poqomchi’",
+    "Q’anjob’al",
+    "Q’eqchi’",
+    "Sakapulteko",
+    "Sipakapense",
+    "Tektiteko",
+    "Tz’utujil",
+    "Uspanteko",
+    "Español",
+    "Inglés",
+  ].map((s) => s.toUpperCase());
+
+  dl.innerHTML = idiomas.map((x) => `<option value="${escapeHtml(x)}"></option>`).join("");
+}
+
+// =========================
+// Municipios (Lugar de nacimiento)
+// =========================
+
+function seedDepartamentosYMunicipios() {
+  const depDl = $("listaDepartamentos");
+  const munDl = $("listaMunicipios");
+  const deptInput = $("deptNac");
+  const munInput = $("munNac");
+
+  if (!depDl || !munDl || !deptInput || !munInput) return;
+
+  const map = window.MUNICIPIOS;
+  const lookup = window.DEPT_LOOKUP || {};
+  const norm = window.normGT || ((s) => (s || "").toLowerCase().trim());
+
+  if (!map || typeof map !== "object") {
+    console.warn("municipios.js no expone window.MUNICIPIOS");
+    munInput.disabled = true;
+    munInput.placeholder = "PRIMERO ELIGE DEPARTAMENTO";
+    return;
+  }
+
+  const departamentos = Object.keys(map).sort((a, b) => a.localeCompare(b)).map((d) => d.toUpperCase());
+  depDl.innerHTML = departamentos.map((d) => `<option value="${escapeHtml(d)}"></option>`).join("");
+
+  function resolveDeptCanonical(rawUpper) {
+    const raw = (rawUpper || "").trim();
+    if (!raw) return "";
+
+    // Intento: comparar por normalización contra el lookup (que está construido con el canonical)
+    const key = lookup[norm(raw)];
+    if (key && map[key]) return key; // canonical con mayúsculas/minúsculas originales
+    // Fallback: buscar por uppercase exacto
+    const found = Object.keys(map).find((k) => k.toUpperCase() === raw);
+    return found || "";
+  }
+
+  function refreshMunicipios() {
+    const rawDept = (deptInput.value || "").trim().toUpperCase();
+    const canonicalDept = resolveDeptCanonical(rawDept);
+
+    // Set dept canonical en MAYÚSCULAS para tu uso
+    if (canonicalDept) deptInput.value = canonicalDept.toUpperCase();
+
+    const muns = canonicalDept ? (map[canonicalDept] || []) : [];
+
+    if (!canonicalDept) {
+      munInput.disabled = true;
+      munInput.value = "";
+      munInput.placeholder = "PRIMERO ELIGE DEPARTAMENTO";
+      munDl.innerHTML = "";
+      return;
+    }
+
+    munInput.disabled = false;
+    munInput.placeholder = "ESCRIBE EL MUNICIPIO…";
+
+    const sorted = muns.slice().sort((a, b) => a.localeCompare(b)).map((m) => m.toUpperCase());
+    munDl.innerHTML = sorted.map((m) => `<option value="${escapeHtml(m)}"></option>`).join("");
+
+    // Si municipio no pertenece al depto, lo limpiamos
+    if (munInput.value) {
+      const upperVal = munInput.value.toUpperCase();
+      if (!sorted.includes(upperVal)) munInput.value = "";
+      else munInput.value = upperVal;
+    }
+  }
+
+  deptInput.addEventListener("input", refreshMunicipios);
+  deptInput.addEventListener("change", refreshMunicipios);
+  munInput.addEventListener("input", () => {
+    munInput.value = (munInput.value || "").toUpperCase();
+  });
+
+  // estado inicial
+  refreshMunicipios();
+}
+
+// =========================
+// Botón: listar campos del PDF
+// =========================
+
+async function listarCamposPDF() {
+  const bytes = await fetch(PDF_PATH).then((r) => r.arrayBuffer());
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const form = pdfDoc.getForm();
+
+  console.log("=== CAMPOS EN EL PDF (name / type) ===");
+  form.getFields().forEach((f) => console.log(f.getName(), "-", f.constructor.name));
+  console.log("TIP: si algún nombre no coincide, lo ajustamos en safeSetText/safeCheck.");
+}
+
+// =========================
+// Botón: limpiar
+// =========================
+
+function limpiarFormulario() {
+  const ids = [
+    // Para uso consular
+    "fecha", "mision", "CuiDPI", "depMun",
+
+    // pago
+    "pago100", "pago65", "pago15", "pago6",
+
+    // estatus
+    "estatusNuevo", "estatusRenovar", "estatusReponer",
+
+    // doc presentado
+    "docDpi", "docCertificado", "docPasaporte",
+
+    // datos solicitante
+    "nombre1","nombre2","nombre3","apellido1","apellido2","apellidoCasada",
+    "deptNac","munNac",
+    "nacDia","nacMes","nacAnio","edad","estatura","peso","ocupacion",
+
+    // sexo / estado civil / etnia / idioma
+    "sexoM","sexoF","civilCasado","civilSoltero","etniaMaya","etniaLadino","idioma",
+
+    // padres
+    "padre","madre",
+
+    // teléfonos
+    "celularRes","telRes",
+
+    // dirección (envío)
+    "dirEnv","aptEnv","ciudadEnv","estadoEnv","zipEnv",
+
+    // autorización menor
+    "documentoPadre","documentoMadre",
+
+    // observaciones
+    "obs1","obs2",
+  ];
+
+  ids.forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    if (el.type === "checkbox" || el.type === "radio") el.checked = false;
+    else el.value = "";
+  });
+
+  initAutoFechaHoy();
+  seedDepartamentosYMunicipios();
+  seedIdiomasMayas();
+}
+
+// =========================
+// Botón: Generar PDF
+// =========================
+
+async function generarPDF() {
+  const data = readFormData();
+
+  const bytes = await fetch(PDF_PATH).then((r) => r.arrayBuffer());
+  const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+  const form = pdfDoc.getForm();
+
+  // ======================
+  // TEXT FIELDS
+  // ======================
+  safeSetText(form, "Primer nombre", data.nombre1);
+  safeSetText(form, "Segundo nombre", data.nombre2);
+  safeSetText(form, "Tercer nombre", data.nombre3);
+  safeSetText(form, "Primer apellido", data.apellido1);
+  safeSetText(form, "Segundo apellido", data.apellido2);
+  safeSetText(form, "Apellido de casada", data.apellidoCasada);
+
+  safeSetText(form, "Fecha", data.fecha);
+  safeSetText(form, "Misión", data.mision);
+
+  // IMPORTANTE: aquí mandamos el CUI con espacios (1234 12345 1234)
+  safeSetText(form, "CuiDPI", data.cuiDpi);
+
+  safeSetText(form, "Departamento-Municipio", data.depMun);
+
+  safeSetText(form, "Departamento Lugar de Nacimiento", data.deptNac);
+  safeSetText(form, "Municipio", data.munNac);
+
+  safeSetText(form, "Text95", data.nacDia);
+  safeSetText(form, "Text96", data.nacMes);
+  safeSetText(form, "Text97", data.nacAnio);
+
+  safeSetText(form, "años", data.edad);
+  safeSetText(form, "centímetros", data.estatura);
+  safeSetText(form, "libras", data.peso);
+  safeSetText(form, "ocupación", data.ocupacion);
+
+  safeSetText(form, "Padre", data.padre);
+  safeSetText(form, "Madre", data.madre);
+
+  // Teléfonos formateados: (206) 555 1212
+  safeSetText(form, "Teléfono celular", data.celular);
+  safeSetText(form, "Teléfono", data.telefono);
+
+  safeSetText(form, "Dirección", data.dirEnv);
+  safeSetText(form, "APT", data.aptEnv);
+  safeSetText(form, "Ciudad", data.ciudadEnv);
+  safeSetText(form, "Estado u otro", data.estadoEnv);
+  safeSetText(form, "Código postal", data.zipEnv);
+
+  safeSetText(form, "Idioma", data.idioma);
+
+  safeSetText(form, "DocumentoPadre", data.documentoPadre);
+  safeSetText(form, "DocumentoMadre", data.documentoMadre);
+
+  safeSetText(form, "Observacion1", data.obs1);
+  safeSetText(form, "Observacion2", data.obs2);
+
+  // ======================
+  // CHECKS
+  // ======================
+
+  // Pago:
+  safeCheck(form, "Check$100", data.pagoPasaporte === "100");
+  safeCheck(form, "Check$85",  data.pagoPasaporte === "65"); // lo dejas así por tu PDF
+
+  safeCheck(form, "Check$15", data.pago15);
+  safeCheck(form, "CheckCertificado", data.pago6);
+
+  // Estatus pasaporte
+  safeCheck(form, "CheckNuevo", data.estatus === "nuevo");
+  safeCheck(form, "CheckRenovar", data.estatus === "renovar");
+  safeCheck(form, "CheckReponer", data.estatus === "reponer");
+
+  // Documento presentado
+  safeCheck(form, "CheckDpi", data.docPresentado === "dpi");
+  safeCheck(form, "CheckCertificado", data.docPresentado === "certificado");
+  safeCheck(form, "CheckPasaporte", data.docPresentado === "pasaporte");
+
+  // Sexo
+  safeCheck(form, "CheckM", data.sexo === "M");
+  safeCheck(form, "CheckF", data.sexo === "F");
+
+  // Estado civil
+  safeCheck(form, "CheckCasado", data.estadoCivil === "casado");
+  safeCheck(form, "CheckSoltero", data.estadoCivil === "soltero");
+
+  // Etnia
+  safeCheck(form, "CheckMaya", data.etnia === "maya");
+  safeCheck(form, "CheckLadino", data.etnia === "ladino");
+
+  // Aplanar (ideal para impresión)
+  form.flatten();
+
+  const out = await pdfDoc.save();
+  const blob = new Blob([out], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+}
+
+// =========================
+// Lectura del HTML
+// =========================
+
+function readFormData() {
+  const getVal = (id) => ($(id)?.value || "").trim();
+  const getChecked = (id) => !!$(id)?.checked;
+
+  const pagoPasaporte =
+    ($("pago100")?.checked && "100") ||
+    ($("pago65")?.checked && "65") ||
+    "";
+
+  // Nota: aquí NO limpiamos CUI/teléfonos para que el PDF reciba el formato
+  return {
+    fecha: getVal("fecha").toUpperCase(),
+    mision: getVal("mision").toUpperCase(),
+    cuiDpi: getVal("CuiDPI"), // ya viene con espacios (1234 12345 1234)
+    depMun: getVal("depMun").toUpperCase(),
+
+    pagoPasaporte,
+    pago15: getChecked("pago15"),
+    pago6: getChecked("pago6"),
+
+    estatus:
+      ($("estatusNuevo")?.checked && "nuevo") ||
+      ($("estatusRenovar")?.checked && "renovar") ||
+      ($("estatusReponer")?.checked && "reponer") ||
+      "",
+
+    docPresentado:
+      ($("docDpi")?.checked && "dpi") ||
+      ($("docCertificado")?.checked && "certificado") ||
+      ($("docPasaporte")?.checked && "pasaporte") ||
+      "",
+
+    nombre1: getVal("nombre1").toUpperCase(),
+    nombre2: getVal("nombre2").toUpperCase(),
+    nombre3: getVal("nombre3").toUpperCase(),
+    apellido1: getVal("apellido1").toUpperCase(),
+    apellido2: getVal("apellido2").toUpperCase(),
+    apellidoCasada: getVal("apellidoCasada").toUpperCase(),
+
+    deptNac: getVal("deptNac").toUpperCase(),
+    munNac: getVal("munNac").toUpperCase(),
+
+    nacDia: getVal("nacDia"),
+    nacMes: getVal("nacMes"),
+    nacAnio: getVal("nacAnio"),
+    edad: getVal("edad"),
+    estatura: getVal("estatura"),
+    peso: getVal("peso"),
+    ocupacion: getVal("ocupacion").toUpperCase(),
+
+    sexo:
+      ($("sexoM")?.checked && "M") ||
+      ($("sexoF")?.checked && "F") ||
+      "",
+
+    estadoCivil:
+      ($("civilCasado")?.checked && "casado") ||
+      ($("civilSoltero")?.checked && "soltero") ||
+      "",
+
+    etnia:
+      ($("etniaMaya")?.checked && "maya") ||
+      ($("etniaLadino")?.checked && "ladino") ||
+      "",
+
+    idioma: getVal("idioma").toUpperCase(),
+
+    padre: getVal("padre").toUpperCase(),
+    madre: getVal("madre").toUpperCase(),
+
+    celular: getVal("celularRes"),  // (206) 555 1212
+    telefono: getVal("telRes"),     // (206) 555 1212
+
+    dirEnv: getVal("dirEnv").toUpperCase(),
+    aptEnv: getVal("aptEnv").toUpperCase(),
+    ciudadEnv: getVal("ciudadEnv").toUpperCase(),
+    estadoEnv: getVal("estadoEnv").toUpperCase(),
+    zipEnv: getVal("zipEnv"),
+
+    documentoPadre: getVal("documentoPadre").toUpperCase(),
+    documentoMadre: getVal("documentoMadre").toUpperCase(),
+
+    obs1: getVal("obs1").toUpperCase(),
+    obs2: getVal("obs2").toUpperCase(),
+  };
+}
+
+// =========================
+// PDF safe setters
+// =========================
+
+function safeSetText(form, fieldName, value) {
+  if (!value) return;
+  try {
+    const f = form.getTextField(fieldName);
+    f.setText(String(value));
+  } catch (e) {
+    console.warn(`No se pudo setear "${fieldName}". Revisa nombre real en consola (btnListar).`);
+  }
+}
+
+function safeCheck(form, fieldName, shouldCheck) {
+  if (!shouldCheck) return;
   try {
     const cb = form.getCheckBox(fieldName);
-    if (checked) cb.check();
-    else cb.uncheck();
+    cb.check();
   } catch (e) {
-    // no rompe
+    console.warn(`No se pudo marcar "${fieldName}". Revisa nombre real en consola (btnListar).`);
   }
+}
+
+// =========================
+// Utils
+// =========================
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
