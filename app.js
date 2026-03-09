@@ -32,7 +32,6 @@ function initAutoFechaHoy() {
   const el = $("fecha");
   if (!el) return;
 
-  // Si está vacío, lo llenamos con hoy en dd/mm/aa
   if (!el.value.trim()) {
     const d = new Date();
     const dd = String(d.getDate()).padStart(2, "0");
@@ -44,19 +43,17 @@ function initAutoFechaHoy() {
 
 function wireInputMasks() {
   // ====== MAYÚSCULAS (consulado) ======
-  // Convierte a mayúsculas al escribir en campos de texto (no afecta radios/checkbox/date)
-  // Mantiene espacios, acentos, apóstrofes, etc.
   const forceUpperIds = [
     "mision",
     "depMun",
-    "nombre1","nombre2","nombre3","apellido1","apellido2","apellidoCasada",
-    "deptNac","munNac",
+    "nombre1", "nombre2", "nombre3", "apellido1", "apellido2", "apellidoCasada",
+    "deptNac", "munNac",
     "idioma",
     "ocupacion",
-    "padre","madre",
-    "dirEnv","aptEnv","ciudadEnv","estadoEnv",
-    "documentoPadre","documentoMadre",
-    "obs1","obs2",
+    "padre", "madre",
+    "dirEnv", "aptEnv", "ciudadEnv", "estadoEnv",
+    "documentoPadre", "documentoMadre",
+    "obs1", "obs2",
   ];
 
   forceUpperIds.forEach((id) => {
@@ -66,7 +63,6 @@ function wireInputMasks() {
       const start = el.selectionStart;
       const end = el.selectionEnd;
       el.value = (el.value || "").toUpperCase();
-      // intenta conservar cursor
       try { el.setSelectionRange(start, end); } catch {}
     });
   });
@@ -168,7 +164,7 @@ function wireInputMasks() {
     });
   });
 
-  // Zip (5)
+  // Zip
   const zip = $("zipEnv");
   if (zip) {
     zip.addEventListener("input", (e) => {
@@ -180,6 +176,7 @@ function wireInputMasks() {
 // =========================
 // Idiomas mayas (datalist)
 // =========================
+
 function seedIdiomasMayas() {
   const dl = $("listaIdiomas");
   if (!dl) return;
@@ -236,17 +233,21 @@ function seedDepartamentosYMunicipios() {
     return;
   }
 
-  const departamentos = Object.keys(map).sort((a, b) => a.localeCompare(b)).map((d) => d.toUpperCase());
-  depDl.innerHTML = departamentos.map((d) => `<option value="${escapeHtml(d)}"></option>`).join("");
+  const departamentos = Object.keys(map)
+    .sort((a, b) => a.localeCompare(b))
+    .map((d) => d.toUpperCase());
+
+  depDl.innerHTML = departamentos
+    .map((d) => `<option value="${escapeHtml(d)}"></option>`)
+    .join("");
 
   function resolveDeptCanonical(rawUpper) {
     const raw = (rawUpper || "").trim();
     if (!raw) return "";
 
-    // Intento: comparar por normalización contra el lookup (que está construido con el canonical)
     const key = lookup[norm(raw)];
-    if (key && map[key]) return key; // canonical con mayúsculas/minúsculas originales
-    // Fallback: buscar por uppercase exacto
+    if (key && map[key]) return key;
+
     const found = Object.keys(map).find((k) => k.toUpperCase() === raw);
     return found || "";
   }
@@ -254,8 +255,6 @@ function seedDepartamentosYMunicipios() {
   function refreshMunicipios() {
     const rawDept = (deptInput.value || "").trim().toUpperCase();
     const canonicalDept = resolveDeptCanonical(rawDept);
-
-    // Set dept canonical en MAYÚSCULAS para tu uso
     if (canonicalDept) deptInput.value = canonicalDept.toUpperCase();
 
     const muns = canonicalDept ? (map[canonicalDept] || []) : [];
@@ -271,10 +270,15 @@ function seedDepartamentosYMunicipios() {
     munInput.disabled = false;
     munInput.placeholder = "ESCRIBE EL MUNICIPIO…";
 
-    const sorted = muns.slice().sort((a, b) => a.localeCompare(b)).map((m) => m.toUpperCase());
-    munDl.innerHTML = sorted.map((m) => `<option value="${escapeHtml(m)}"></option>`).join("");
+    const sorted = muns
+      .slice()
+      .sort((a, b) => a.localeCompare(b))
+      .map((m) => m.toUpperCase());
 
-    // Si municipio no pertenece al depto, lo limpiamos
+    munDl.innerHTML = sorted
+      .map((m) => `<option value="${escapeHtml(m)}"></option>`)
+      .join("");
+
     if (munInput.value) {
       const upperVal = munInput.value.toUpperCase();
       if (!sorted.includes(upperVal)) munInput.value = "";
@@ -288,7 +292,6 @@ function seedDepartamentosYMunicipios() {
     munInput.value = (munInput.value || "").toUpperCase();
   });
 
-  // estado inicial
   refreshMunicipios();
 }
 
@@ -312,40 +315,29 @@ async function listarCamposPDF() {
 
 function limpiarFormulario() {
   const ids = [
-    // Para uso consular
     "fecha", "mision", "CuiDPI", "depMun",
 
-    // pago
     "pago100", "pago65", "pago15", "pago6",
 
-    // estatus
     "estatusNuevo", "estatusRenovar", "estatusReponer",
 
-    // doc presentado
     "docDpi", "docCertificado", "docPasaporte",
 
-    // datos solicitante
-    "nombre1","nombre2","nombre3","apellido1","apellido2","apellidoCasada",
-    "deptNac","munNac",
-    "nacDia","nacMes","nacAnio","edad","estatura","peso","ocupacion",
+    "nombre1", "nombre2", "nombre3", "apellido1", "apellido2", "apellidoCasada",
+    "deptNac", "munNac",
+    "nacDia", "nacMes", "nacAnio", "edad", "estatura", "peso", "ocupacion",
 
-    // sexo / estado civil / etnia / idioma
-    "sexoM","sexoF","civilCasado","civilSoltero","etniaMaya","etniaLadino","idioma",
+    "sexoM", "sexoF", "civilCasado", "civilSoltero", "etniaMaya", "etniaLadino", "idioma",
 
-    // padres
-    "padre","madre",
+    "padre", "madre",
 
-    // teléfonos
-    "celularRes","telRes",
+    "celularRes", "telRes",
 
-    // dirección (envío)
-    "dirEnv","aptEnv","ciudadEnv","estadoEnv","zipEnv",
+    "dirEnv", "aptEnv", "ciudadEnv", "estadoEnv", "zipEnv",
 
-    // autorización menor
-    "documentoPadre","documentoMadre",
+    "documentoPadre", "documentoMadre",
 
-    // observaciones
-    "obs1","obs2",
+    "obs1", "obs2",
   ];
 
   ids.forEach((id) => {
@@ -384,41 +376,50 @@ async function generarPDF() {
   safeSetText(form, "Fecha", data.fecha);
   safeSetText(form, "Misión", data.mision);
 
-  // IMPORTANTE: aquí mandamos el CUI con espacios (1234 12345 1234)
+  // CUI con formato: 1234 12345 1234
   safeSetText(form, "CuiDPI", data.cuiDpi);
 
-  safeSetText(form, "Departamento-Municipio", data.depMun);
+  // Lugar de emisión del documento presentado
+  safeSetText(form, "Departamento -Municipio", data.depMun);
 
+  // Lugar de nacimiento
   safeSetText(form, "Departamento Lugar de Nacimiento", data.deptNac);
   safeSetText(form, "Municipio", data.munNac);
 
+  // Fecha de nacimiento
   safeSetText(form, "Text95", data.nacDia);
   safeSetText(form, "Text96", data.nacMes);
   safeSetText(form, "Text97", data.nacAnio);
 
+  // Extras
   safeSetText(form, "años", data.edad);
   safeSetText(form, "centímetros", data.estatura);
   safeSetText(form, "libras", data.peso);
   safeSetText(form, "ocupación", data.ocupacion);
 
+  // Padres
   safeSetText(form, "Padre", data.padre);
   safeSetText(form, "Madre", data.madre);
 
-  // Teléfonos formateados: (206) 555 1212
+  // Teléfonos con formato
   safeSetText(form, "Teléfono celular", data.celular);
   safeSetText(form, "Teléfono", data.telefono);
 
-  safeSetText(form, "Dirección", data.dirEnv);
-  safeSetText(form, "APT", data.aptEnv);
-  safeSetText(form, "Ciudad", data.ciudadEnv);
-  safeSetText(form, "Estado u otro", data.estadoEnv);
-  safeSetText(form, "Código postal", data.zipEnv);
+  // Dirección
+  safeSetText(form, "Dirección_2", data.dirEnv);
+  safeSetText(form, "APT_2", data.aptEnv);
+  safeSetText(form, "Ciudad_2", data.ciudadEnv);
+  safeSetText(form, "Estado otro_2", data.estadoEnv);
+  safeSetText(form, "Código postal_2", data.zipEnv);
 
-  safeSetText(form, "Idioma", data.idioma);
+  // Idioma
+  safeSetText(form, "idioma", data.idioma);
 
+  // Autorización menor
   safeSetText(form, "DocumentoPadre", data.documentoPadre);
   safeSetText(form, "DocumentoMadre", data.documentoMadre);
 
+  // Observaciones
   safeSetText(form, "Observacion1", data.obs1);
   safeSetText(form, "Observacion2", data.obs2);
 
@@ -426,12 +427,11 @@ async function generarPDF() {
   // CHECKS
   // ======================
 
-  // Pago:
+  // Pago
   safeCheck(form, "Check$100", data.pagoPasaporte === "100");
-  safeCheck(form, "Check$85",  data.pagoPasaporte === "65"); // lo dejas así por tu PDF
-
+  safeCheck(form, "Check$65", data.pagoPasaporte === "65");
   safeCheck(form, "Check$15", data.pago15);
-  safeCheck(form, "CheckCertificado", data.pago6);
+  safeCheck(form, "Check$6", data.pago6);
 
   // Estatus pasaporte
   safeCheck(form, "CheckNuevo", data.estatus === "nuevo");
@@ -455,7 +455,6 @@ async function generarPDF() {
   safeCheck(form, "CheckMaya", data.etnia === "maya");
   safeCheck(form, "CheckLadino", data.etnia === "ladino");
 
-  // Aplanar (ideal para impresión)
   form.flatten();
 
   const out = await pdfDoc.save();
@@ -477,11 +476,10 @@ function readFormData() {
     ($("pago65")?.checked && "65") ||
     "";
 
-  // Nota: aquí NO limpiamos CUI/teléfonos para que el PDF reciba el formato
   return {
     fecha: getVal("fecha").toUpperCase(),
     mision: getVal("mision").toUpperCase(),
-    cuiDpi: getVal("CuiDPI"), // ya viene con espacios (1234 12345 1234)
+    cuiDpi: getVal("CuiDPI"),
     depMun: getVal("depMun").toUpperCase(),
 
     pagoPasaporte,
@@ -538,8 +536,8 @@ function readFormData() {
     padre: getVal("padre").toUpperCase(),
     madre: getVal("madre").toUpperCase(),
 
-    celular: getVal("celularRes"),  // (206) 555 1212
-    telefono: getVal("telRes"),     // (206) 555 1212
+    celular: getVal("celularRes"),
+    telefono: getVal("telRes"),
 
     dirEnv: getVal("dirEnv").toUpperCase(),
     aptEnv: getVal("aptEnv").toUpperCase(),
