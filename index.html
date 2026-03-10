@@ -358,6 +358,32 @@
     </div>
   </div>
 
+  <!-- REGISTRO DE PASAPORTES DEL DÍA -->
+<div class="section">
+  <h2>Registro de pasaportes del día</h2>
+
+  <div class="btns">
+    <button class="secondary" type="button" id="btnRegistrarEntrevista">Registrar entrevista</button>
+    <button class="gray" type="button" id="btnCopiarLista">Copiar lista</button>
+  </div>
+
+  <div class="subtle" style="margin-top:10px">
+    Solo se registran personas que tramitan pasaporte ($100 o $65).  
+    Esta lista está pensada para copiar y pegar directamente en Excel.
+  </div>
+
+  <div class="row" style="margin-top:14px;">
+    <label>Vista previa de la lista</label>
+    <textarea
+      id="listaPasaportesPreview"
+      rows="10"
+      readonly
+      style="width:100%; padding:10px; border:1px solid #ccc; border-radius:10px; font-size:13px; background:#fff;"
+      placeholder="Aquí aparecerá la lista lista para copiar..."
+    ></textarea>
+  </div>
+</div>
+
   <!-- BOTONES -->
   <div class="btns">
     <button class="gray" type="button" id="btnListar">Ver nombres de campos del PDF (consola)</button>
