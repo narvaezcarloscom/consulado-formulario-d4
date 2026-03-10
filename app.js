@@ -15,14 +15,20 @@ document.addEventListener("DOMContentLoaded", () => {
   seedIdiomasMayas();             // datalist idiomas
 
   // ====== Botones ======
-  const btnListar = $("btnListar");
-  const btnNuevo = $("btnNuevo");
-  const btnGenerar = $("btnGenerar");
+const btnListar = $("btnListar");
+const btnNuevo = $("btnNuevo");
+const btnGenerar = $("btnGenerar");
+const btnRegistrarEntrevista = $("btnRegistrarEntrevista");
+const btnCopiarLista = $("btnCopiarLista");
 
-  if (btnListar) btnListar.addEventListener("click", listarCamposPDF);
-  if (btnNuevo) btnNuevo.addEventListener("click", limpiarFormulario);
-  if (btnGenerar) btnGenerar.addEventListener("click", generarPDF);
-});
+if (btnListar) btnListar.addEventListener("click", listarCamposPDF);
+if (btnNuevo) btnNuevo.addEventListener("click", limpiarFormulario);
+if (btnGenerar) btnGenerar.addEventListener("click", generarPDF);
+if (btnRegistrarEntrevista) btnRegistrarEntrevista.addEventListener("click", registrarEntrevista);
+if (btnCopiarLista) btnCopiarLista.addEventListener("click", copiarListaPasaportes);
+
+// Cargar preview al abrir
+renderListaPasaportesPreview();
 
 // =========================
 // Defaults / UX
@@ -350,6 +356,14 @@ function limpiarFormulario() {
   initAutoFechaHoy();
   seedDepartamentosYMunicipios();
   seedIdiomasMayas();
+
+  entrevistaYaRegistrada = false;
+
+  const btnRegistrar = $("btnRegistrarEntrevista");
+  if (btnRegistrar) btnRegistrar.disabled = false;
+
+  renderListaPasaportesPreview();
+
 }
 
 // =========================
@@ -551,6 +565,135 @@ function readFormData() {
     obs1: getVal("obs1").toUpperCase(),
     obs2: getVal("obs2").toUpperCase(),
   };
+}
+
+// =========================
+// Registro de pasaportes del día
+// =========================
+
+const STORAGE_KEY_PASAPORTES = "registro_pasaportes_dia";
+let entrevistaYaRegistrada = false;
+
+function getRegistroPasaportes() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY_PASAPORTES) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveRegistroPasaportes(data) {
+  localStorage.setItem(STORAGE_KEY_PASAPORTES, JSON.stringify(data));
+}
+
+function buildNombres(data) {
+  return [
+    data.nombre1,
+    data.nombre2,
+    data.nombre3,
+  ].filter(Boolean).join(" ");
+}
+
+function buildApellidos(data) {
+  return [
+    data.apellido1,
+    data.apellido2,
+    data.apellidoCasada,
+  ].filter(Boolean).join(" ");
+}
+
+function getCostoPasaporte(data) {
+  if (data.pagoPasaporte === "100") return "$100";
+  if (data.pagoPasaporte === "65") return "$65";
+  return "";
+}
+
+function registrarEntrevista() {
+  if (entrevistaYaRegistrada) {
+    alert("Esta entrevista ya fue registrada. Presiona 'Nuevo' para comenzar otra.");
+    return;
+  }
+
+  const data = readFormData();
+  const costoPasaporte = getCostoPasaporte(data);
+
+  // Solo registrar si es pasaporte
+  if (!costoPasaporte) {
+    alert("Solo se registran entrevistas de pasaporte ($100 o $65).");
+    return;
+  }
+
+  const nombres = buildNombres(data);
+  const apellidos = buildApellidos(data);
+
+  if (!nombres || !apellidos) {
+    alert("Faltan nombres o apellidos para registrar la entrevista.");
+    return;
+  }
+
+  const registro = getRegistroPasaportes();
+
+  registro.push({
+    fecha: data.fecha,
+    nombres,
+    apellidos,
+    costoPasaporte,
+    _id: Date.now() // interno, no se exporta
+  });
+
+  saveRegistroPasaportes(registro);
+  renderListaPasaportesPreview();
+
+  entrevistaYaRegistrada = true;
+
+  const btnRegistrar = $("btnRegistrarEntrevista");
+  if (btnRegistrar) btnRegistrar.disabled = true;
+
+  alert("Entrevista registrada correctamente.");
+}
+
+function buildListaPasaportesTexto() {
+  const registro = getRegistroPasaportes();
+
+  const rows = [
+    ["Fecha", "Nombres", "Apellidos", "Costo de pasaporte"].join("\t")
+  ];
+
+  registro.forEach((item) => {
+    rows.push([
+      item.fecha || "",
+      item.nombres || "",
+      item.apellidos || "",
+      item.costoPasaporte || ""
+    ].join("\t"));
+  });
+
+  return rows.join("\n");
+}
+
+function renderListaPasaportesPreview() {
+  const preview = $("listaPasaportesPreview");
+  if (!preview) return;
+
+  const texto = buildListaPasaportesTexto();
+  preview.value = texto;
+}
+
+async function copiarListaPasaportes() {
+  const texto = buildListaPasaportesTexto();
+
+  try {
+    await navigator.clipboard.writeText(texto);
+    alert("Lista copiada. Ya puedes pegarla en Excel.");
+  } catch (e) {
+    // fallback simple
+    const preview = $("listaPasaportesPreview");
+    if (preview) {
+      preview.focus();
+      preview.select();
+    }
+    alert("No se pudo copiar automáticamente. Selecciona el texto y cópialo manualmente.");
+  }
 }
 
 // =========================
