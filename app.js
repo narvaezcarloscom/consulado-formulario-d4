@@ -409,7 +409,7 @@ async function generarPDF() {
   safeSetText(form, "Dirección_2", data.dirEnv);
   safeSetText(form, "APT_2", data.aptEnv);
   safeSetText(form, "Ciudad_2", data.ciudadEnv);
-  safeSetText(form, "Estado otro_2", data.estadoEnv);
+  safeSetText(form, "Estado u otro_2", data.estadoEnv);
   safeSetText(form, "Código postal_2", data.zipEnv);
 
   // Idioma
