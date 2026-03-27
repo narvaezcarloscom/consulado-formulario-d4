@@ -7,21 +7,35 @@
 const PDF_PATH = encodeURI("./formularioD4.pdf");
 const $ = (id) => document.getElementById(id);
 
-document.addEventListener("DOMContentLoaded", () => {
-  // ====== Defaults / UX ======
-  initAutoFechaHoy();
-  wireInputMasks();
-  seedDepartamentosYMunicipios(); // usa municipios.js (dept nac / mun nac)
-  seedIdiomasMayas();             // datalist idiomas
+const DEFAULT_MISION = "ESTADO DE WASHINGTON";
+const DEFAULT_LUGAR_EMISION = "GUATEMALA/GUATEMALA";
+const STORAGE_KEY_ENTREVISTADOR = "d4_entrevistador";
+const STORAGE_KEY_PASAPORTES = "registro_pasaportes_dia";
 
-  // ====== Botones ======
+let entrevistaYaRegistrada = false;
+
+document.addEventListener("DOMContentLoaded", () => {
+  initAutoFechaHoy();
+  initDefaults();
+  wireInputMasks();
+  seedDepartamentosYMunicipios();
+  seedIdiomasMayas();
+  seedOcupaciones();
+  initEntrevistadorPersistente();
+
   const btnListar = $("btnListar");
   const btnNuevo = $("btnNuevo");
   const btnGenerar = $("btnGenerar");
+  const btnRegistrarEntrevista = $("btnRegistrarEntrevista");
+  const btnCopiarLista = $("btnCopiarLista");
 
   if (btnListar) btnListar.addEventListener("click", listarCamposPDF);
   if (btnNuevo) btnNuevo.addEventListener("click", limpiarFormulario);
   if (btnGenerar) btnGenerar.addEventListener("click", generarPDF);
+  if (btnRegistrarEntrevista) btnRegistrarEntrevista.addEventListener("click", registrarEntrevista);
+  if (btnCopiarLista) btnCopiarLista.addEventListener("click", copiarListaPasaportes);
+
+  renderListaPasaportesPreview();
 });
 
 // =========================
@@ -41,12 +55,51 @@ function initAutoFechaHoy() {
   }
 }
 
+function initDefaults() {
+  const mision = $("mision");
+  const depMun = $("depMun");
+
+  if (mision && !mision.value.trim()) {
+    mision.value = DEFAULT_MISION;
+  }
+
+  if (depMun && !depMun.value.trim()) {
+    depMun.value = DEFAULT_LUGAR_EMISION;
+  }
+}
+
+function initEntrevistadorPersistente() {
+  const el = $("entrevistador");
+  if (!el) return;
+
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_ENTREVISTADOR);
+    if (saved) el.value = saved.toUpperCase();
+  } catch (_) {}
+
+  el.addEventListener("input", () => {
+    el.value = (el.value || "").toUpperCase();
+    try {
+      localStorage.setItem(STORAGE_KEY_ENTREVISTADOR, el.value);
+    } catch (_) {}
+  });
+
+  el.addEventListener("change", () => {
+    el.value = (el.value || "").toUpperCase();
+    try {
+      localStorage.setItem(STORAGE_KEY_ENTREVISTADOR, el.value);
+    } catch (_) {}
+  });
+}
+
 function wireInputMasks() {
-  // ====== MAYÚSCULAS (consulado) ======
+  // MAYÚSCULAS
   const forceUpperIds = [
     "mision",
     "depMun",
-    "nombre1", "nombre2", "nombre3", "apellido1", "apellido2", "apellidoCasada",
+    "entrevistador",
+    "nombre1", "nombre2", "nombre3",
+    "apellido1", "apellido2", "apellidoCasada",
     "deptNac", "munNac",
     "idioma",
     "ocupacion",
@@ -63,11 +116,11 @@ function wireInputMasks() {
       const start = el.selectionStart;
       const end = el.selectionEnd;
       el.value = (el.value || "").toUpperCase();
-      try { el.setSelectionRange(start, end); } catch {}
+      try { el.setSelectionRange(start, end); } catch (_) {}
     });
   });
 
-  // ====== CUI DPI -> formato: 1234 12345 1234 (13 dígitos) ======
+  // CUI DPI -> 1234 12345 1234
   const cui = $("CuiDPI");
   if (cui) {
     cui.addEventListener("input", (e) => {
@@ -79,7 +132,7 @@ function wireInputMasks() {
     });
   }
 
-  // ====== Teléfonos -> (206) 555 1212 ======
+  // Teléfonos -> (206) 555 1212
   function formatPhone(value) {
     const d = (value || "").replace(/\D/g, "").slice(0, 10);
     const a = d.slice(0, 3);
@@ -100,7 +153,7 @@ function wireInputMasks() {
     });
   });
 
-  // ====== Nacimiento + edad ======
+  // Nacimiento + edad
   const dia = $("nacDia");
   const mes = $("nacMes");
   const anio = $("nacAnio");
@@ -155,7 +208,7 @@ function wireInputMasks() {
   if (mes) mes.addEventListener("input", recalcEdad);
   if (anio) anio.addEventListener("input", recalcEdad);
 
-  // ====== Campos numéricos (3 dígitos) ======
+  // Numéricos
   ["estatura", "peso"].forEach((id) => {
     const el = $(id);
     if (!el) return;
@@ -164,7 +217,6 @@ function wireInputMasks() {
     });
   });
 
-  // Zip
   const zip = $("zipEnv");
   if (zip) {
     zip.addEventListener("input", (e) => {
@@ -174,7 +226,7 @@ function wireInputMasks() {
 }
 
 // =========================
-// Idiomas mayas (datalist)
+// Datalists
 // =========================
 
 function seedIdiomasMayas() {
@@ -208,6 +260,29 @@ function seedIdiomasMayas() {
   ].map((s) => s.toUpperCase());
 
   dl.innerHTML = idiomas.map((x) => `<option value="${escapeHtml(x)}"></option>`).join("");
+}
+
+function seedOcupaciones() {
+  const dl = $("listaOcupaciones");
+  if (!dl) return;
+
+  const ocupaciones = [
+    "OPERARIO",
+    "AMA DE CASA",
+    "JARDINERO",
+    "CONSTRUCCION",
+    "AGRICULTOR",
+    "COCINERO(A)",
+    "LAVAPLATOS",
+    "OFICINISTA",
+    "EMPAQUETADOR(A)",
+    "CHOFER",
+    "LIMPIEZA",
+  ];
+
+  dl.innerHTML = ocupaciones
+    .map((x) => `<option value="${escapeHtml(x)}"></option>`)
+    .join("");
 }
 
 // =========================
@@ -296,7 +371,7 @@ function seedDepartamentosYMunicipios() {
 }
 
 // =========================
-// Botón: listar campos del PDF
+// Debug PDF fields
 // =========================
 
 async function listarCamposPDF() {
@@ -310,12 +385,12 @@ async function listarCamposPDF() {
 }
 
 // =========================
-// Botón: limpiar
+// Limpiar / Nuevo
 // =========================
 
 function limpiarFormulario() {
   const ids = [
-    "fecha", "mision", "CuiDPI", "depMun",
+    "fecha", "CuiDPI",
 
     "pago100", "pago65", "pago15", "pago6",
 
@@ -323,11 +398,15 @@ function limpiarFormulario() {
 
     "docDpi", "docCertificado", "docPasaporte",
 
-    "nombre1", "nombre2", "nombre3", "apellido1", "apellido2", "apellidoCasada",
-    "deptNac", "munNac",
-    "nacDia", "nacMes", "nacAnio", "edad", "estatura", "peso", "ocupacion",
+    "nombre1", "nombre2", "nombre3",
+    "apellido1", "apellido2", "apellidoCasada",
 
-    "sexoM", "sexoF", "civilCasado", "civilSoltero", "etniaMaya", "etniaLadino", "idioma",
+    "deptNac", "munNac",
+    "nacDia", "nacMes", "nacAnio", "edad",
+    "estatura", "peso", "ocupacion",
+
+    "sexoM", "sexoF", "civilCasado", "civilSoltero",
+    "etniaMaya", "etniaLadino", "idioma",
 
     "padre", "madre",
 
@@ -350,10 +429,32 @@ function limpiarFormulario() {
   initAutoFechaHoy();
   seedDepartamentosYMunicipios();
   seedIdiomasMayas();
+  seedOcupaciones();
+
+  const mision = $("mision");
+  if (mision) mision.value = DEFAULT_MISION;
+
+  const depMun = $("depMun");
+  if (depMun) depMun.value = DEFAULT_LUGAR_EMISION;
+
+  // mantener entrevistador persistente
+  const entrevistador = $("entrevistador");
+  if (entrevistador) {
+    try {
+      entrevistador.value = (localStorage.getItem(STORAGE_KEY_ENTREVISTADOR) || "").toUpperCase();
+    } catch (_) {}
+  }
+
+  entrevistaYaRegistrada = false;
+
+  const btnRegistrar = $("btnRegistrarEntrevista");
+  if (btnRegistrar) btnRegistrar.disabled = false;
+
+  renderListaPasaportesPreview();
 }
 
 // =========================
-// Botón: Generar PDF
+// Generar PDF
 // =========================
 
 async function generarPDF() {
@@ -363,9 +464,6 @@ async function generarPDF() {
   const pdfDoc = await PDFLib.PDFDocument.load(bytes);
   const form = pdfDoc.getForm();
 
-  // ======================
-  // TEXT FIELDS
-  // ======================
   safeSetText(form, "Primer nombre", data.nombre1);
   safeSetText(form, "Segundo nombre", data.nombre2);
   safeSetText(form, "Tercer nombre", data.nombre3);
@@ -375,83 +473,61 @@ async function generarPDF() {
 
   safeSetText(form, "Fecha", data.fecha);
   safeSetText(form, "Misión", data.mision);
-
-  // CUI con formato: 1234 12345 1234
   safeSetText(form, "CuiDPI", data.cuiDpi);
-
-  // Lugar de emisión del documento presentado
   safeSetText(form, "Departamento -Municipio", data.depMun);
+  safeSetText(form, "entrevistador", data.entrevistador);
 
-  // Lugar de nacimiento
   safeSetText(form, "Departamento Lugar de Nacimiento", data.deptNac);
   safeSetText(form, "Municipio", data.munNac);
 
-  // Fecha de nacimiento
   safeSetText(form, "Text95", data.nacDia);
   safeSetText(form, "Text96", data.nacMes);
   safeSetText(form, "Text97", data.nacAnio);
 
-  // Extras
   safeSetText(form, "años", data.edad);
   safeSetText(form, "centímetros", data.estatura);
   safeSetText(form, "libras", data.peso);
   safeSetText(form, "ocupación", data.ocupacion);
 
-  // Padres
   safeSetText(form, "Padre", data.padre);
   safeSetText(form, "Madre", data.madre);
 
-  // Teléfonos con formato
   safeSetText(form, "Teléfono celular", data.celular);
   safeSetText(form, "Teléfono", data.telefono);
 
-  // Dirección
   safeSetText(form, "Dirección_2", data.dirEnv);
   safeSetText(form, "APT_2", data.aptEnv);
   safeSetText(form, "Ciudad_2", data.ciudadEnv);
-  safeSetText(form, "Estado u otro_2", data.estadoEnv);
+  safeSetText(form, "Estado otro_2", data.estadoEnv);
   safeSetText(form, "Código postal_2", data.zipEnv);
 
-  // Idioma
   safeSetText(form, "idioma", data.idioma);
 
-  // Autorización menor
   safeSetText(form, "DocumentoPadre", data.documentoPadre);
   safeSetText(form, "DocumentoMadre", data.documentoMadre);
 
-  // Observaciones
   safeSetText(form, "Observacion1", data.obs1);
   safeSetText(form, "Observacion2", data.obs2);
 
-  // ======================
-  // CHECKS
-  // ======================
-
-  // Pago
   safeCheck(form, "Check$100", data.pagoPasaporte === "100");
   safeCheck(form, "Check$65", data.pagoPasaporte === "65");
   safeCheck(form, "Check$15", data.pago15);
   safeCheck(form, "Check$6", data.pago6);
 
-  // Estatus pasaporte
   safeCheck(form, "CheckNuevo", data.estatus === "nuevo");
   safeCheck(form, "CheckRenovar", data.estatus === "renovar");
   safeCheck(form, "CheckReponer", data.estatus === "reponer");
 
-  // Documento presentado
   safeCheck(form, "CheckDpi", data.docPresentado === "dpi");
   safeCheck(form, "CheckCertificado", data.docPresentado === "certificado");
   safeCheck(form, "CheckPasaporte", data.docPresentado === "pasaporte");
 
-  // Sexo
   safeCheck(form, "CheckM", data.sexo === "M");
   safeCheck(form, "CheckF", data.sexo === "F");
 
-  // Estado civil
   safeCheck(form, "CheckCasado", data.estadoCivil === "casado");
   safeCheck(form, "CheckSoltero", data.estadoCivil === "soltero");
 
-  // Etnia
   safeCheck(form, "CheckMaya", data.etnia === "maya");
   safeCheck(form, "CheckLadino", data.etnia === "ladino");
 
@@ -464,7 +540,7 @@ async function generarPDF() {
 }
 
 // =========================
-// Lectura del HTML
+// Lectura del formulario
 // =========================
 
 function readFormData() {
@@ -481,6 +557,7 @@ function readFormData() {
     mision: getVal("mision").toUpperCase(),
     cuiDpi: getVal("CuiDPI"),
     depMun: getVal("depMun").toUpperCase(),
+    entrevistador: getVal("entrevistador").toUpperCase(),
 
     pagoPasaporte,
     pago15: getChecked("pago15"),
@@ -554,26 +631,147 @@ function readFormData() {
 }
 
 // =========================
+// Registro de pasaportes del día
+// =========================
+
+function getRegistroPasaportes() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY_PASAPORTES) || "[]");
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveRegistroPasaportes(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY_PASAPORTES, JSON.stringify(data));
+  } catch (e) {
+    throw new Error("No se pudo guardar en localStorage");
+  }
+}
+
+function buildNombres(data) {
+  return [data.nombre1, data.nombre2, data.nombre3].filter(Boolean).join(" ");
+}
+
+function buildApellidos(data) {
+  return [data.apellido1, data.apellido2, data.apellidoCasada].filter(Boolean).join(" ");
+}
+
+function getCostoPasaporte(data) {
+  if (data.pagoPasaporte === "100") return "$100";
+  if (data.pagoPasaporte === "65") return "$65";
+  return "";
+}
+
+function registrarEntrevista() {
+  if (entrevistaYaRegistrada) {
+    alert("Esta entrevista ya fue registrada. Presiona 'Nuevo' para comenzar otra.");
+    return;
+  }
+
+  const data = readFormData();
+  const costoPasaporte = getCostoPasaporte(data);
+
+  if (!costoPasaporte) {
+    alert("Solo se registran entrevistas de pasaporte ($100 o $65).");
+    return;
+  }
+
+  const nombres = buildNombres(data);
+  const apellidos = buildApellidos(data);
+
+  if (!nombres || !apellidos) {
+    alert("Faltan nombres o apellidos para registrar la entrevista.");
+    return;
+  }
+
+  try {
+    const registro = getRegistroPasaportes();
+
+    registro.push({
+      fecha: data.fecha,
+      nombres,
+      apellidos,
+      costoPasaporte,
+      _id: Date.now()
+    });
+
+    saveRegistroPasaportes(registro);
+    renderListaPasaportesPreview();
+
+    entrevistaYaRegistrada = true;
+
+    const btnRegistrar = $("btnRegistrarEntrevista");
+    if (btnRegistrar) btnRegistrar.disabled = true;
+
+    alert("Entrevista registrada correctamente.");
+  } catch (e) {
+    alert("Error al registrar entrevista: " + e.message);
+  }
+}
+
+function buildListaPasaportesTexto() {
+  const registro = getRegistroPasaportes();
+
+  const rows = [
+    ["Fecha", "Nombres", "Apellidos", "Costo de pasaporte"].join("\t")
+  ];
+
+  registro.forEach((item) => {
+    rows.push([
+      item.fecha || "",
+      item.nombres || "",
+      item.apellidos || "",
+      item.costoPasaporte || ""
+    ].join("\t"));
+  });
+
+  return rows.join("\n");
+}
+
+function renderListaPasaportesPreview() {
+  const preview = $("listaPasaportesPreview");
+  if (!preview) return;
+
+  preview.value = buildListaPasaportesTexto();
+}
+
+async function copiarListaPasaportes() {
+  const texto = buildListaPasaportesTexto();
+
+  try {
+    await navigator.clipboard.writeText(texto);
+    alert("Lista copiada. Ya puedes pegarla en Excel.");
+  } catch (_) {
+    const preview = $("listaPasaportesPreview");
+    if (preview) {
+      preview.focus();
+      preview.select();
+    }
+    alert("No se pudo copiar automáticamente. Selecciona el texto y cópialo manualmente.");
+  }
+}
+
+// =========================
 // PDF safe setters
 // =========================
 
 function safeSetText(form, fieldName, value) {
   if (!value) return;
   try {
-    const f = form.getTextField(fieldName);
-    f.setText(String(value));
+    form.getTextField(fieldName).setText(String(value));
   } catch (e) {
-    console.warn(`No se pudo setear "${fieldName}". Revisa nombre real en consola (btnListar).`);
+    console.warn(`No se pudo setear "${fieldName}". Revisa nombre real en consola.`);
   }
 }
 
 function safeCheck(form, fieldName, shouldCheck) {
   if (!shouldCheck) return;
   try {
-    const cb = form.getCheckBox(fieldName);
-    cb.check();
+    form.getCheckBox(fieldName).check();
   } catch (e) {
-    console.warn(`No se pudo marcar "${fieldName}". Revisa nombre real en consola (btnListar).`);
+    console.warn(`No se pudo marcar "${fieldName}". Revisa nombre real en consola.`);
   }
 }
 

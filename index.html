@@ -16,13 +16,41 @@
       --radius:14px;
     }
     *{box-sizing:border-box}
-    body{font-family:Arial, sans-serif; max-width:980px; margin:24px auto; padding:0 16px; color:var(--text); background:var(--bg)}
+    body{
+      font-family:Arial, sans-serif;
+      max-width:980px;
+      margin:24px auto;
+      padding:0 16px;
+      color:var(--text);
+      background:var(--bg)
+    }
     h1{font-size:20px; margin:0 0 14px}
-    .section{border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin:14px 0; background:var(--card)}
+    .section{
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:14px;
+      margin:14px 0;
+      background:var(--card)
+    }
     .section h2{font-size:14px; margin:0 0 10px}
-    label{font-size:12px; color:#222; display:block; margin-bottom:6px}
-    input, select{width:100%; padding:10px; border:1px solid #ccc; border-radius:10px; font-size:14px; background:#fff}
-    input:focus, select:focus{outline:2px solid rgba(11,102,255,.15); border-color:#9dbfff}
+    label{
+      font-size:12px;
+      color:#222;
+      display:block;
+      margin-bottom:6px
+    }
+    input, select, textarea{
+      width:100%;
+      padding:10px;
+      border:1px solid #ccc;
+      border-radius:10px;
+      font-size:14px;
+      background:#fff
+    }
+    input:focus, select:focus, textarea:focus{
+      outline:2px solid rgba(11,102,255,.15);
+      border-color:#9dbfff
+    }
     .grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:12px}
     .grid2{display:grid; grid-template-columns:repeat(2, 1fr); gap:12px}
     .grid4{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px}
@@ -46,7 +74,13 @@
     .pill span{font-size:13px}
     .subtle{font-size:12px; color:var(--muted); margin-top:6px; line-height:1.35}
     .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
-    button{border:0; border-radius:12px; padding:10px 14px; font-size:14px; cursor:pointer}
+    button{
+      border:0;
+      border-radius:12px;
+      padding:10px 14px;
+      font-size:14px;
+      cursor:pointer
+    }
     button.primary{background:var(--blue); color:#fff}
     button.secondary{background:var(--green); color:#fff}
     button.gray{background:#eee}
@@ -78,7 +112,6 @@
     <div class="row">
       <label>Pago</label>
       <div class="pillRow">
-        <!-- Grupo pasaporte (exclusivo) -->
         <label class="pill" title="Pasaporte 10 años">
           <input type="radio" name="pasaportePago" id="pago100" value="100">
           <span>$100</span>
@@ -88,7 +121,6 @@
           <span>$65</span>
         </label>
 
-        <!-- Check independientes -->
         <label class="pill" title="DPI">
           <input type="checkbox" id="pago15">
           <span>$15 (DPI)</span>
@@ -138,12 +170,19 @@
 
     <div class="grid2">
       <div class="row tight2">
-        <label>CUI DPI</label>
-        <input id="CuiDPI" inputmode="numeric" maxlength="15" placeholder="0000 00000 0000">
+        <label>CUI DPI (13 dígitos)</label>
+        <input id="CuiDPI" inputmode="numeric" maxlength="15" placeholder="1234 12345 1234">
       </div>
       <div class="row">
         <label>Lugar de emisión (Departamento / Municipio)</label>
-        <input id="depMun" placeholder="Ej: Guatemala / Guatemala">
+        <input id="depMun" value="GUATEMALA/GUATEMALA" placeholder="Ej: Guatemala / Guatemala">
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="row tight">
+        <label>Iniciales del entrevistador</label>
+        <input id="entrevistador" maxlength="5" placeholder="Ej: CN">
       </div>
     </div>
   </div>
@@ -229,7 +268,8 @@
       </div>
       <div class="row">
         <label>Ocupación</label>
-        <input id="ocupacion" placeholder="ocupación">
+        <input id="ocupacion" list="listaOcupaciones" placeholder="ocupación">
+        <datalist id="listaOcupaciones"></datalist>
       </div>
     </div>
 
@@ -261,7 +301,7 @@
 
         <div class="row tight2" style="margin:0">
           <label style="margin-bottom:6px">Idioma</label>
-          <input id="idioma" list="listaIdiomas" placeholder="Ej: Español / K’iche’">
+          <input id="idioma" list="listaIdiomas" placeholder="Ej: ESPAÑOL / K’ICHE’">
           <datalist id="listaIdiomas"></datalist>
         </div>
       </div>
@@ -289,16 +329,16 @@
     <div class="grid2">
       <div class="row">
         <label>Teléfono celular</label>
-        <input id="celularRes" inputmode="tel">
+        <input id="celularRes" inputmode="tel" maxlength="14" placeholder="(206) 555 1212">
       </div>
       <div class="row">
         <label>Teléfono</label>
-        <input id="telRes" inputmode="tel">
+        <input id="telRes" inputmode="tel" maxlength="14" placeholder="(206) 555 1212">
       </div>
     </div>
   </div>
 
-  <!-- DIRECCIÓN (Envío / residencia según tu uso actual) -->
+  <!-- DIRECCIÓN -->
   <div class="section">
     <h2>Dirección</h2>
 
@@ -358,9 +398,34 @@
     </div>
   </div>
 
+  <!-- REGISTRO DE PASAPORTES DEL DÍA -->
+  <div class="section">
+    <h2>Registro de pasaportes del día</h2>
+
+    <div class="btns">
+      <button class="secondary" type="button" id="btnRegistrarEntrevista">Registrar entrevista</button>
+      <button class="gray" type="button" id="btnCopiarLista">Copiar lista</button>
+    </div>
+
+    <div class="subtle" style="margin-top:10px">
+      Solo se registran personas que tramitan pasaporte ($100 o $65).  
+      Esta lista está pensada para copiar y pegar directamente en Excel.
+    </div>
+
+    <div class="row" style="margin-top:14px;">
+      <label>Vista previa de la lista</label>
+      <textarea
+        id="listaPasaportesPreview"
+        rows="10"
+        readonly
+        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:10px; font-size:13px; background:#fff;"
+        placeholder="Aquí aparecerá la lista lista para copiar..."
+      ></textarea>
+    </div>
+  </div>
+
   <!-- BOTONES -->
   <div class="btns">
-    <button class="gray" type="button" id="btnListar">Ver nombres de campos del PDF (consola)</button>
     <button class="secondary" type="button" id="btnNuevo">Nuevo</button>
     <button class="primary" type="button" id="btnGenerar">Generar PDF (abre pestaña)</button>
   </div>
@@ -372,9 +437,10 @@
   <!-- pdf-lib -->
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
 
-  <!-- Tu dataset de municipios -->
-<script src="./municipios.js?v=1"></script>
-  <!-- app (cache-buster para Hostinger) -->
-  <script src="./app.js?v=20260304-1"></script>
+  <!-- dataset de municipios -->
+  <script src="./municipios.js"></script>
+
+  <!-- app -->
+  <script src="./app.js?v=20260315-1"></script>
 </body>
 </html>
