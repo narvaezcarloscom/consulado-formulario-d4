@@ -221,7 +221,6 @@
 
     <div class="divider"></div>
 
-    <!-- Lugar de nacimiento -->
     <div class="grid2">
       <div class="row">
         <label>Departamento (Lugar de nacimiento)</label>
@@ -237,7 +236,6 @@
 
     <div class="divider"></div>
 
-    <!-- Fecha de nacimiento + Edad -->
     <div class="grid4">
       <div class="row tight">
         <label>Fecha nacimiento - Día</label>
@@ -398,32 +396,6 @@
     </div>
   </div>
 
-  <!-- REGISTRO DE PASAPORTES DEL DÍA -->
-  <div class="section">
-    <h2>Registro de pasaportes del día</h2>
-
-    <div class="btns">
-      <button class="secondary" type="button" id="btnRegistrarEntrevista">Registrar entrevista</button>
-      <button class="gray" type="button" id="btnCopiarLista">Copiar lista</button>
-    </div>
-
-    <div class="subtle" style="margin-top:10px">
-      Solo se registran personas que tramitan pasaporte ($100 o $65).  
-      Esta lista está pensada para copiar y pegar directamente en Excel.
-    </div>
-
-    <div class="row" style="margin-top:14px;">
-      <label>Vista previa de la lista</label>
-      <textarea
-        id="listaPasaportesPreview"
-        rows="10"
-        readonly
-        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:10px; font-size:13px; background:#fff;"
-        placeholder="Aquí aparecerá la lista lista para copiar..."
-      ></textarea>
-    </div>
-  </div>
-
   <!-- BOTONES -->
   <div class="btns">
     <button class="secondary" type="button" id="btnNuevo">Nuevo</button>
@@ -434,13 +406,8 @@
     Impresión: en la pestaña del PDF usa <b>Letter</b> y <b>Scale 100% / Actual size</b> (sin “Fit to page”).
   </div>
 
-  <!-- pdf-lib -->
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-
-  <!-- dataset de municipios -->
   <script src="./municipios.js"></script>
-
-  <!-- app -->
-  <script src="./app.js?v=20260315-1"></script>
+  <script src="./app.js?v=20260315-2"></script>
 </body>
 </html>

@@ -10,9 +10,6 @@ const $ = (id) => document.getElementById(id);
 const DEFAULT_MISION = "ESTADO DE WASHINGTON";
 const DEFAULT_LUGAR_EMISION = "GUATEMALA/GUATEMALA";
 const STORAGE_KEY_ENTREVISTADOR = "d4_entrevistador";
-const STORAGE_KEY_PASAPORTES = "registro_pasaportes_dia";
-
-let entrevistaYaRegistrada = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   initAutoFechaHoy();
@@ -26,16 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnListar = $("btnListar");
   const btnNuevo = $("btnNuevo");
   const btnGenerar = $("btnGenerar");
-  const btnRegistrarEntrevista = $("btnRegistrarEntrevista");
-  const btnCopiarLista = $("btnCopiarLista");
 
   if (btnListar) btnListar.addEventListener("click", listarCamposPDF);
   if (btnNuevo) btnNuevo.addEventListener("click", limpiarFormulario);
   if (btnGenerar) btnGenerar.addEventListener("click", generarPDF);
-  if (btnRegistrarEntrevista) btnRegistrarEntrevista.addEventListener("click", registrarEntrevista);
-  if (btnCopiarLista) btnCopiarLista.addEventListener("click", copiarListaPasaportes);
-
-  renderListaPasaportesPreview();
 });
 
 // =========================
@@ -93,7 +84,6 @@ function initEntrevistadorPersistente() {
 }
 
 function wireInputMasks() {
-  // MAYÚSCULAS
   const forceUpperIds = [
     "mision",
     "depMun",
@@ -120,7 +110,7 @@ function wireInputMasks() {
     });
   });
 
-  // CUI DPI -> 1234 12345 1234
+  // CUI DPI -> formato: 1234 12345 1234
   const cui = $("CuiDPI");
   if (cui) {
     cui.addEventListener("input", (e) => {
@@ -153,7 +143,7 @@ function wireInputMasks() {
     });
   });
 
-  // Nacimiento + edad
+  // Fecha de nacimiento + edad
   const dia = $("nacDia");
   const mes = $("nacMes");
   const anio = $("nacAnio");
@@ -208,7 +198,6 @@ function wireInputMasks() {
   if (mes) mes.addEventListener("input", recalcEdad);
   if (anio) anio.addEventListener("input", recalcEdad);
 
-  // Numéricos
   ["estatura", "peso"].forEach((id) => {
     const el = $(id);
     if (!el) return;
@@ -234,30 +223,30 @@ function seedIdiomasMayas() {
   if (!dl) return;
 
   const idiomas = [
-    "Achi",
-    "Akateko",
-    "Awakateko",
-    "Ch’orti’",
-    "Chuj",
-    "Itza",
-    "Ixil",
-    "Jakalteco",
-    "Kaqchikel",
-    "K’iche’",
-    "Mam",
-    "Mopan",
-    "Poqomam",
-    "Poqomchi’",
-    "Q’anjob’al",
-    "Q’eqchi’",
-    "Sakapulteko",
-    "Sipakapense",
-    "Tektiteko",
-    "Tz’utujil",
-    "Uspanteko",
-    "Español",
-    "Inglés",
-  ].map((s) => s.toUpperCase());
+    "ACHI",
+    "AKATEKO",
+    "AWAKATEKO",
+    "CH’ORTI’",
+    "CHUJ",
+    "ITZA",
+    "IXIL",
+    "JAKALTECO",
+    "KAQCHIKEL",
+    "K’ICHE’",
+    "MAM",
+    "MOPAN",
+    "POQOMAM",
+    "POQOMCHI’",
+    "Q’ANJOB’AL",
+    "Q’EQCHI’",
+    "SAKAPULTEKO",
+    "SIPAKAPENSE",
+    "TEKTITEKO",
+    "TZ’UTUJIL",
+    "USPANTEKO",
+    "ESPAÑOL",
+    "INGLÉS",
+  ];
 
   dl.innerHTML = idiomas.map((x) => `<option value="${escapeHtml(x)}"></option>`).join("");
 }
@@ -381,7 +370,6 @@ async function listarCamposPDF() {
 
   console.log("=== CAMPOS EN EL PDF (name / type) ===");
   form.getFields().forEach((f) => console.log(f.getName(), "-", f.constructor.name));
-  console.log("TIP: si algún nombre no coincide, lo ajustamos en safeSetText/safeCheck.");
 }
 
 // =========================
@@ -437,20 +425,12 @@ function limpiarFormulario() {
   const depMun = $("depMun");
   if (depMun) depMun.value = DEFAULT_LUGAR_EMISION;
 
-  // mantener entrevistador persistente
   const entrevistador = $("entrevistador");
   if (entrevistador) {
     try {
       entrevistador.value = (localStorage.getItem(STORAGE_KEY_ENTREVISTADOR) || "").toUpperCase();
     } catch (_) {}
   }
-
-  entrevistaYaRegistrada = false;
-
-  const btnRegistrar = $("btnRegistrarEntrevista");
-  if (btnRegistrar) btnRegistrar.disabled = false;
-
-  renderListaPasaportesPreview();
 }
 
 // =========================
@@ -628,129 +608,6 @@ function readFormData() {
     obs1: getVal("obs1").toUpperCase(),
     obs2: getVal("obs2").toUpperCase(),
   };
-}
-
-// =========================
-// Registro de pasaportes del día
-// =========================
-
-function getRegistroPasaportes() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY_PASAPORTES) || "[]");
-  } catch (_) {
-    return [];
-  }
-}
-
-function saveRegistroPasaportes(data) {
-  try {
-    localStorage.setItem(STORAGE_KEY_PASAPORTES, JSON.stringify(data));
-  } catch (e) {
-    throw new Error("No se pudo guardar en localStorage");
-  }
-}
-
-function buildNombres(data) {
-  return [data.nombre1, data.nombre2, data.nombre3].filter(Boolean).join(" ");
-}
-
-function buildApellidos(data) {
-  return [data.apellido1, data.apellido2, data.apellidoCasada].filter(Boolean).join(" ");
-}
-
-function getCostoPasaporte(data) {
-  if (data.pagoPasaporte === "100") return "$100";
-  if (data.pagoPasaporte === "65") return "$65";
-  return "";
-}
-
-function registrarEntrevista() {
-  if (entrevistaYaRegistrada) {
-    alert("Esta entrevista ya fue registrada. Presiona 'Nuevo' para comenzar otra.");
-    return;
-  }
-
-  const data = readFormData();
-  const costoPasaporte = getCostoPasaporte(data);
-
-  if (!costoPasaporte) {
-    alert("Solo se registran entrevistas de pasaporte ($100 o $65).");
-    return;
-  }
-
-  const nombres = buildNombres(data);
-  const apellidos = buildApellidos(data);
-
-  if (!nombres || !apellidos) {
-    alert("Faltan nombres o apellidos para registrar la entrevista.");
-    return;
-  }
-
-  try {
-    const registro = getRegistroPasaportes();
-
-    registro.push({
-      fecha: data.fecha,
-      nombres,
-      apellidos,
-      costoPasaporte,
-      _id: Date.now()
-    });
-
-    saveRegistroPasaportes(registro);
-    renderListaPasaportesPreview();
-
-    entrevistaYaRegistrada = true;
-
-    const btnRegistrar = $("btnRegistrarEntrevista");
-    if (btnRegistrar) btnRegistrar.disabled = true;
-
-    alert("Entrevista registrada correctamente.");
-  } catch (e) {
-    alert("Error al registrar entrevista: " + e.message);
-  }
-}
-
-function buildListaPasaportesTexto() {
-  const registro = getRegistroPasaportes();
-
-  const rows = [
-    ["Fecha", "Nombres", "Apellidos", "Costo de pasaporte"].join("\t")
-  ];
-
-  registro.forEach((item) => {
-    rows.push([
-      item.fecha || "",
-      item.nombres || "",
-      item.apellidos || "",
-      item.costoPasaporte || ""
-    ].join("\t"));
-  });
-
-  return rows.join("\n");
-}
-
-function renderListaPasaportesPreview() {
-  const preview = $("listaPasaportesPreview");
-  if (!preview) return;
-
-  preview.value = buildListaPasaportesTexto();
-}
-
-async function copiarListaPasaportes() {
-  const texto = buildListaPasaportesTexto();
-
-  try {
-    await navigator.clipboard.writeText(texto);
-    alert("Lista copiada. Ya puedes pegarla en Excel.");
-  } catch (_) {
-    const preview = $("listaPasaportesPreview");
-    if (preview) {
-      preview.focus();
-      preview.select();
-    }
-    alert("No se pudo copiar automáticamente. Selecciona el texto y cópialo manualmente.");
-  }
 }
 
 // =========================
