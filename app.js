@@ -9,7 +9,6 @@ const $ = (id) => document.getElementById(id);
 
 const DEFAULT_MISION = "ESTADO DE WASHINGTON";
 const DEFAULT_LUGAR_EMISION = "GUATEMALA/GUATEMALA";
-const STORAGE_KEY_ENTREVISTADOR = "d4_entrevistador";
 
 document.addEventListener("DOMContentLoaded", () => {
   initAutoFechaHoy();
@@ -18,7 +17,6 @@ document.addEventListener("DOMContentLoaded", () => {
   seedDepartamentosYMunicipios();
   seedIdiomasMayas();
   seedOcupaciones();
-  initEntrevistadorPersistente();
 
   const btnListar = $("btnListar");
   const btnNuevo = $("btnNuevo");
@@ -57,30 +55,6 @@ function initDefaults() {
   if (depMun && !depMun.value.trim()) {
     depMun.value = DEFAULT_LUGAR_EMISION;
   }
-}
-
-function initEntrevistadorPersistente() {
-  const el = $("entrevistador");
-  if (!el) return;
-
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_ENTREVISTADOR);
-    if (saved) el.value = saved.toUpperCase();
-  } catch (_) {}
-
-  el.addEventListener("input", () => {
-    el.value = (el.value || "").toUpperCase();
-    try {
-      localStorage.setItem(STORAGE_KEY_ENTREVISTADOR, el.value);
-    } catch (_) {}
-  });
-
-  el.addEventListener("change", () => {
-    el.value = (el.value || "").toUpperCase();
-    try {
-      localStorage.setItem(STORAGE_KEY_ENTREVISTADOR, el.value);
-    } catch (_) {}
-  });
 }
 
 function wireInputMasks() {
@@ -424,13 +398,6 @@ function limpiarFormulario() {
 
   const depMun = $("depMun");
   if (depMun) depMun.value = DEFAULT_LUGAR_EMISION;
-
-  const entrevistador = $("entrevistador");
-  if (entrevistador) {
-    try {
-      entrevistador.value = (localStorage.getItem(STORAGE_KEY_ENTREVISTADOR) || "").toUpperCase();
-    } catch (_) {}
-  }
 }
 
 // =========================
